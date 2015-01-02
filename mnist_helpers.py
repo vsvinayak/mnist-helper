@@ -8,17 +8,15 @@ from scipy.ndimage.filters import gaussian_filter
 
 def prepare_test_image(image, width ,resize_shape):
     """
-    This function normalizes an an already padded image and flattens it into a
+    This function normalizes a test image and flattens it into a
     row vector
     :param image: a numpy array
+    :param width: width for width normalization
     :param resize_shape: a tuple denoting the shape of the padded image
     :return : a 1-D array
     """
 
-    
-
     # resizing the image 
-    #resized_image = resize_img(cropped_image, resize_shape)
     resized_img = width_normalization(image, width, resize_shape)
 
     # deskew
@@ -173,7 +171,8 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
                or high_jj >= image.shape[0] - 1:
                 continue
 
-            res = image[low_ii, low_jj]/4 + image[low_ii, high_jj]/4 + image[high_ii, low_jj]/4 + image[high_ii, high_jj]/4
+            res = image[low_ii, low_jj]/4 + image[low_ii, high_jj]/4 + \
+                    image[high_ii, low_jj]/4 + image[high_ii, high_jj]/4
 
             result[row, col] = res
 
