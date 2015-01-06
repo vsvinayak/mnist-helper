@@ -49,15 +49,11 @@ def do_cropping(image):
     except ValueError:
         return image
 
-    # approximate the contours
-    approx = cv2.approxPolyDP(contours[max_index], 3, True)
-
     # find the cropping co-ordinates
-    crop_rect = cv2.boundingRect(approx)
+    x, y, width, height = cv2.boundingRect(approx)
 
     # return cropped image
-    cropped_img = image[crop_rect[0]:crop_rect[0]+crop_rect[3],\
-                        crop_rect[1]:crop_rect[1]+crop_rect[2]]
+    cropped_img = image[y:y+height, x:x+width]
 
     return cropped_img
 
