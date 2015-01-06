@@ -50,7 +50,7 @@ def do_cropping(image):
         return image
 
     # find the cropping co-ordinates
-    x, y, width, height = cv2.boundingRect(approx)
+    x, y, width, height = cv2.boundingRect(contours[max_index])
 
     # return cropped image
     cropped_img = image[y:y+height, x:x+width]
