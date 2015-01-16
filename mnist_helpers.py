@@ -3,7 +3,6 @@ import numpy
 import math
 
 from numpy.random import random_integers
-from scipy.ndimage import interpolation
 from scipy.ndimage.filters import gaussian_filter
 
 def prepare_test_image(image, width ,resize_shape):
@@ -139,15 +138,19 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
     if not negated:
         image = 255-image
 
+    # check if kernel dimesnion is odd
+    if kernel_dim % 2 == 0:
+        raise ValueError("Kernel dimension should be odd")
+
     # create an empty image
     result = numpy.zeros(image.shape)
 
     # create random displacement fields
-    displacement_field_x = numpy.array([[random_integers(-1, 1) for x in xrange(kernel_dim)] \
-                            for y in xrange(kernel_dim)]) * alpha
-    displacement_field_y = numpy.array([[random_integers(-1, 1) for x in xrange(kernel_dim)] \
-                            for y in xrange(kernel_dim)]) * alpha
-    
+    displacement_field_x = numpy.array([[random_integers(-1, 1) for x in xrange(image.shape[0])] \
+                            for y in xrange(image.shape[1])]) * alpha
+    displacement_field_y = numpy.array([[random_integers(-1, 1) for x in xrange(image.shape[0])] \
+                            for y in xrange(image.shape[1])]) * alpha
+
     # convolve the fields with the gaussian kernel
     displacement_field_x = gaussian_filter(displacement_field_x, sigma)
     displacement_field_y = gaussian_filter(displacement_field_y, sigma)
