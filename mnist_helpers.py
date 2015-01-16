@@ -26,7 +26,7 @@ def prepare_test_image(image, width ,resize_shape, negated=False):
     resized_image = resize_img(image, resize_shape, negated=True)
     #resized_image = width_normalization(image, width, resize_shape, negated=negated)
     
-    # median filtering
+    # gaussian filtering
     resized_image = cv2.GaussianBlur(resized_image,(3,3), 0)
     # deskew
     #deskewed_image = deskew(resized_image, resize_shape)
