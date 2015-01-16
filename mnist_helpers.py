@@ -5,27 +5,38 @@ import math
 from numpy.random import random_integers
 from scipy.ndimage.filters import gaussian_filter
 
-def prepare_test_image(image, width ,resize_shape):
+def prepare_test_image(image, width ,resize_shape, negated=False):
     """
-    This function normalizes a test image and flattens it into a
+    This function normalizes an an already padded image and flattens it into a
     row vector
     :param image: a numpy array
-    :param width: width for width normalization
     :param resize_shape: a tuple denoting the shape of the padded image
+    :param negated: a flag to know if the input image is a negated one
     :return : a 1-D array
     """
 
-    # resizing the image 
-    resized_img = width_normalization(image, width, resize_shape)
+    # negate the image 
+    if not negated:
+        image = 255-image
 
+    # crop the image
+    cropped_image = do_cropping(image)
+
+    # resizing the image 
+    resized_image = resize_img(image, resize_shape, negated=True)
+    #resized_image = width_normalization(image, width, resize_shape, negated=negated)
+    
+    # median filtering
+    resized_image = cv2.GaussianBlur(resized_image,(3,3), 0)
     # deskew
     #deskewed_image = deskew(resized_image, resize_shape)
     
-    # negate the image and normalize its values to fit in the range [0,1]
-    norm_image = numpy.asarray(255-resized_img, dtype=numpy.float32) / 255.
+    # normalize the image values to fit in the range [0,1]
+    norm_image = numpy.asarray(resized_image, dtype=numpy.float32) / 255.
 
     # Flatten the image to a 1-D vector and return
     return norm_image.reshape(1, resize_shape[0] * resize_shape[1])
+
 
 
 def do_cropping(image):
@@ -84,7 +95,7 @@ def deskew(image, image_shape, negated=False):
     return img
 
 
-def resize_img(image, target_shape, value=255, min_padding=5):
+def resize_img(image, target_shape, value=255, min_padding=5, negated=False):
     """
     This method adds padding to the image and makes it to a nxn array,
     without losing the aspect ratio
@@ -96,13 +107,15 @@ def resize_img(image, target_shape, value=255, min_padding=5):
     :returns :  a padded image 
     """
 
+    # set the value for negated
+    if negated:
+        value = 0
+
     # Getting the image dimensions
-    image_width = image.shape[1]
-    image_height = image.shape[0]
+    image_height, image_width = image.shape
 
     # Getting the target dimensions
-    target_width = target_shape[1] 
-    target_height = target_shape[0]
+    target_height, target_width = target_shape 
 
     # Add padding
     max_index = numpy.argmax([image_height, image_width])
@@ -178,7 +191,7 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
     return result
 
         
-def width_normalization(image, width, target_shape):
+def width_normalization(image, width, target_shape, negated=False):
     """
     This method creates a width normalised 1-d vector of an image
     
@@ -189,14 +202,24 @@ def width_normalization(image, width, target_shape):
     :returns: a nd array width normalized image
     """
     
+    # negate the image
+    if not negated:
+        image = 255-image
+
     # crop the number bounding box
     cropped_img = do_cropping(image)
 
+    if not (cropped_img.shape[0] * cropped_img.shape[1]):
+        cropped_img = image
+
     # width normalization
-    width_normalized_img = cv2.resize(cropped_img, (width, cropped_img.shape[1]))
+    if width == -1:
+        width_normalized_img = cropped_img
+    else:
+        width_normalized_img = cv2.resize(cropped_img, (width, cropped_img.shape[1]))
     
     # add padding and resize to the specified shape
-    resized_image = resize_img(width_normalized_img, target_shape)
+    resized_image = resize_img(width_normalized_img, target_shape, negated=True)
 
     # return the width normalized image
     return resized_image
