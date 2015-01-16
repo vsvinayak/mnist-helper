@@ -216,8 +216,8 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
     
     for row in xrange(image.shape[1]):
         for col in xrange(image.shape[0]):
-            low_ii = row + int(math.floor(displacement_field_y[row, col]))
-            high_ii = row + int(math.ceil(displacement_field_y[row, col]))
+            low_ii = row + int(math.floor(displacement_field_x[row, col]))
+            high_ii = row + int(math.ceil(displacement_field_x[row, col]))
 
             low_jj = col + int(math.floor(displacement_field_y[row, col]))
             high_jj = col + int(math.ceil(displacement_field_y[row, col]))
