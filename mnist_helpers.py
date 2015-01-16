@@ -3,7 +3,7 @@ import numpy
 import math
 
 from numpy.random import random_integers
-from scipy.ndimage.filters import gaussian_filter
+from scipy.signal import convolve2d
 
 def prepare_test_image(image, width ,resize_shape, negated=False):
     """
@@ -134,6 +134,46 @@ def resize_img(image, target_shape, value=255, min_padding=5, negated=False):
     return cv2.resize(padded_img, target_shape)
 
 
+def create_2d_gaussian(dim, sigma):
+    """
+    This function creates a 2d gaussian kernel with the standard deviation
+    denoted by sigma
+    
+    :param dim: integer denoting a side (1-d) of gaussian kernel
+    :param sigma: floating point indicating the standard deviation
+    
+    :returns: a numpy 2d array
+    """
+
+    # check if the dimension is odd
+    if dim % 2 == 0:
+        raise ValueError("Kernel dimension should be odd")
+
+    # initialize the kernel
+    kernel = numpy.zeros((dim, dim), dtype=numpy.float16)
+
+    # calculate the center point
+    center = dim/2
+
+    # calculate the variance
+    variance = sigma ** 2
+    
+    # calculate the normalization coefficeint
+    coeff = 1. / (2 * variance)
+
+    # create the kernel
+    for x in range(0, dim):
+        for y in range(0, dim):
+            x_val = abs(x - center)
+            y_val = abs(y - center)
+            numerator = x_val**2 + y_val**2
+            denom = 2*variance
+            
+            kernel[x,y] = coeff * numpy.exp(-1. * numerator/denom)
+    
+    return kernel/sum(sum(kernel))
+
+
 def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
     """
     This method performs elastic transformations on an image by convolving 
@@ -164,9 +204,12 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
     displacement_field_y = numpy.array([[random_integers(-1, 1) for x in xrange(image.shape[0])] \
                             for y in xrange(image.shape[1])]) * alpha
 
+    # create the gaussian kernel
+    kernel = create_2d_gaussian(kernel_dim, sigma)
+
     # convolve the fields with the gaussian kernel
-    displacement_field_x = gaussian_filter(displacement_field_x, sigma)
-    displacement_field_y = gaussian_filter(displacement_field_y, sigma)
+    displacement_field_x = convolve2d(displacement_field_x, kernel)
+    displacement_field_y = convolve2d(displacement_field_y, kernel)
 
     # make the distortrd image by averaging each pixel value to the neighbouring
     # four pixels based on displacement fields
