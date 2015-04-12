@@ -3,7 +3,7 @@ from mnist_helpers import *
 import cv2
 
 # this is the image we want to distort
-test_image = './four.png'
+test_image = './images//four.png'
 
 if __name__ == '__main__':
 
@@ -21,8 +21,8 @@ if __name__ == '__main__':
     image = cv2.resize(image, (30,30))
 
     # get the transformed image
-    distorted_image = elastic_transform(image, kernel_dim=15,
-                                        alpha=7,
-                                        sigma=37)
+    distorted_image = elastic_transform(image, kernel_dim=27,
+                                        alpha=6,
+                                        sigma=40)
 
-    cv2.imwrite('./distortd.png', distorted_image)
+    cv2.imwrite('./images/distortd.png', distorted_image)
