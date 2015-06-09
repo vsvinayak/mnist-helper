@@ -15,7 +15,7 @@ from the Internet
 
 Requirements
 
-1. Opencv python
+1. Opencv-2.x python
 2. numpy
 3. scipy
 
