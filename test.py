@@ -21,8 +21,8 @@ if __name__ == '__main__':
     image = cv2.resize(image, (30,30))
 
     # get the transformed image
-    distorted_image = elastic_transform(image, kernel_dim=27,
-                                        alpha=6,
-                                        sigma=40)
+    distorted_image = elastic_transform(image, kernel_dim=15,
+                                        alpha=5.5,
+                                        sigma=35)
 
     cv2.imwrite('./images/distortd.png', distorted_image)

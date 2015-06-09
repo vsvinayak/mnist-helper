@@ -9,22 +9,25 @@ def prepare_test_image(image, width ,resize_shape, negated=False):
     """
     This function normalizes an an already padded image and flattens it into a
     row vector
-    :param image: a numpy array
+    :param image: the input image
+    :type image: numpy nd array
+
     :param resize_shape: a tuple denoting the shape of the padded image
+    :type resize_shape: tuple
+
     :param negated: a flag to know if the input image is a negated one
-    :return : a 1-D array
+    :type negated: boolean
+
+    :returns : a 1-D array
     """
 
     # negate the image 
     if not negated:
         image = 255-image
-
-    # crop the image
-    cropped_image = do_cropping(image)
-
+    
     # resizing the image 
     resized_image = resize_img(image, resize_shape, negated=True)
-    #resized_image = width_normalization(image, width, resize_shape, negated=negated)
+    #resized_image = width_normalization(image, width, resize_shape, negated=True)
     
     # gaussian filtering
     resized_image = cv2.GaussianBlur(resized_image,(3,3), 0)
@@ -39,18 +42,31 @@ def prepare_test_image(image, width ,resize_shape, negated=False):
 
 
 
-def do_cropping(image):
+def do_cropping(image, negated=False):
     """
     This method will crop the image using the outermost detectable contour
     
-    :param image: a numpy array
+    :param image: input image
+    :type image: numpy array
+
+    :param negated: a boolean value indicating whether the image is already
+                    negated one
+    :type negated: boolean
     """
+    
+    # if the image has 3 channels, convert it into a single channel one
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # check if the image is already negated. If not negate it
+    if not negated:
+        image = 255-image
 
     # do thresholding
-    ret,thresh = cv2.threshold(255-image,127,255,0)
+    ret,thresh = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY|cv2.THRESH_OTSU)
 
     # find contours
-    img, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,
+    contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,
                                                   cv2.CHAIN_APPROX_SIMPLE)
 
     # find the index of contour with maximum area
@@ -64,6 +80,10 @@ def do_cropping(image):
 
     # return cropped image
     cropped_img = image[y:y+height, x:x+width]
+    
+    # the cropped image should of the same format as input image
+    if not negated:
+        cropped_img = 255-cropped_img
 
     return cropped_img
 
@@ -95,42 +115,66 @@ def deskew(image, image_shape, negated=False):
     return img
 
 
-def resize_img(image, target_shape, value=255, min_padding=5, negated=False):
+def resize_img(image, target_shape, value=255, min_padding=2, negated=False):
     """
     This method adds padding to the image and makes it to a nxn array,
     without losing the aspect ratio
     
-    :param image: a numpy array
+    :param image: the input image
+    :type image: numpy array
+
     :param target_shape: the dimensions to which the image needs to be resized
+    :type target_shape: tuple
+
     :param min_padding: minimum padding that to be added
-    :param value: the value of the padding area
+    :type min_padding: int
+
+    :param value: the value of the padding area, 0-black, 255-white
+    :type value: int
+    
+    :param negated: a flag indicating the input image is a negated one or not
+    :type negated: bool
+
     :returns :  a padded image 
     """
+    
+    # if the image is a multi channel one, convert it into a single channel one
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # set the value for negated
+    # If the input image is already neagted, then the padding should be black
     if negated:
         value = 0
 
-    # Getting the image dimensions
+    # image dimensions
     image_height, image_width = image.shape
 
-    # Getting the target dimensions
+    # target dimensions
     target_height, target_width = target_shape 
 
     # Add padding
+    # The aim is to make an image of different width and height to a sqaure image
+    # For that first the biggest attribute among width and height are determined.
     max_index = numpy.argmax([image_height, image_width])
+
+    # if height is the biggest one, then add padding to width until width becomes
+    # equal to height
     if max_index == 0:
         padded_img = cv2.copyMakeBorder(image, min_padding, min_padding,
                                         (image_height + min_padding - image_width)/2, 
                                         (image_height + min_padding - image_width)/2, 
                                         cv2.BORDER_CONSTANT, value=value)
+    
+    # else if width is the biggest one, then add padding to height until height becomes
+    # equal to width
     else:
         padded_img = cv2.copyMakeBorder(image, 
                                         (image_width + min_padding - image_height)/2, 
                                         (image_width + min_padding - image_height)/2, 
                                         min_padding, min_padding, cv2.BORDER_CONSTANT, 
                                         value=value)
-
+    
+    # finally resize the sqaure image to the target shape
     return cv2.resize(padded_img, target_shape)
 
 
@@ -140,7 +184,10 @@ def create_2d_gaussian(dim, sigma):
     denoted by sigma
     
     :param dim: integer denoting a side (1-d) of gaussian kernel
-    :param sigma: floating point indicating the standard deviation
+    :type dim: int
+
+    :param sigma: the standard deviation of the gaussian kernel
+    :type sigma: float
     
     :returns: a numpy 2d array
     """
@@ -171,6 +218,7 @@ def create_2d_gaussian(dim, sigma):
             
             kernel[x,y] = coeff * numpy.exp(-1. * numerator/denom)
     
+    # normalise it
     return kernel/sum(sum(kernel))
 
 
@@ -179,17 +227,37 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
     This method performs elastic transformations on an image by convolving 
     with a gaussian kernel.
 
-    :param image: a numpy nd array
-    :kernel_dim: dimension(1-D) of the gaussian kernel
+    NOTE: Image dimensions should be a sqaure image
+    
+    :param image: the input image
+    :type image: a numpy nd array
+
+    :param kernel_dim: dimension(1-D) of the gaussian kernel
+    :type kernel_dim: int
+
     :param sigma: standard deviation of the kernel
+    :type sigma: float
+
     :param alpha: a multiplicative factor for image after convolution
+    :type alpha: float
+
     :param negated: a flag indicating whether the image is negated or not
+    :type negated: boolean
 
     :returns: a nd array transformed image
     """
+    
+    # convert the image to single channel if it is multi channel one
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
     # check if the image is a negated one
     if not negated:
         image = 255-image
+
+    # check if the image is a square one
+    if image.shape[0] != image.shape[1]:
+        raise ValueError("Image should be of sqaure form")
 
     # check if kernel dimesnion is odd
     if kernel_dim % 2 == 0:
@@ -230,6 +298,11 @@ def elastic_transform(image, kernel_dim=13, sigma=6, alpha=36, negated=False):
                     image[high_ii, low_jj]/4 + image[high_ii, high_jj]/4
 
             result[row, col] = res
+    
+    # if the input image was not negated, make the output image also a non 
+    # negated one
+    if not negated:
+        result = 255-result
 
     return result
 
@@ -238,19 +311,29 @@ def width_normalization(image, width, target_shape, negated=False):
     """
     This method creates a width normalised 1-d vector of an image
     
-    :param image: a nd array denoting the image
-    :param width: the width o which the vector shoul be normalized
+    :param image: the input image
+    :type image: numpy nd array
+
+    :param width: the width to which the image should be normalized 
+                  (a value of -1 will just crop the image along its contour)
+    :type width: int 
+
     :param target_shape: a tuple denoting the output dims
+    :type target_shape: tuple
 
     :returns: a nd array width normalized image
     """
     
+    # if the image have 3 channels, then convert it into grayscale
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
     # negate the image
     if not negated:
         image = 255-image
 
     # crop the number bounding box
-    cropped_img = do_cropping(image)
+    cropped_img = do_cropping(image, negated=True)
 
     if not (cropped_img.shape[0] * cropped_img.shape[1]):
         cropped_img = image
@@ -265,5 +348,8 @@ def width_normalization(image, width, target_shape, negated=False):
     resized_image = resize_img(width_normalized_img, target_shape, negated=True)
 
     # return the width normalized image
+    if not negated:
+        resized_image = 255-resized_image 
+    
     return resized_image
 
